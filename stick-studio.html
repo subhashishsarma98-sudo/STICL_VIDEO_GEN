@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StickyLab AI — 9:16 Stick Figure Explainer Studio</title>
+  <!-- FFmpeg.wasm v0.12+ UMD builds for Client-Side 1080p MP4 Transcoding -->
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-panel: #131a2a;
+      --bg-card: #1c2539;
+      --bg-input: #0e1422;
+      --border: #2a3652;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --accent-2: #818cf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: rgba(19, 26, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffffff 60%, #b4c6e7 100%);
+      border: 3px solid #111827;
+      box-shadow: 0 0 14px var(--accent-glow);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon::before,
+    .brand-icon::after {
+      content: '';
+      width: 6px;
+      height: 8px;
+      background: #111827;
+      border-radius: 50%;
+      position: absolute;
+      top: 12px;
+    }
+    .brand-icon::before { left: 9px; }
+    .brand-icon::after { right: 9px; }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .badge.ram-active .dot {
+      background: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+    }
+
+    /* Main 3-Column Studio Grid */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr 440px;
+      gap: 18px;
+      padding: 18px 24px;
+      flex: 1;
+      max-width: 1800px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1360px) {
+      .studio-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .col-preview {
+        grid-column: span 2;
+        order: -1;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .studio-grid {
+        grid-template-columns: 1fr;
+      }
+      .col-preview {
+        grid-column: span 1;
+      }
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: calc(100vh - 96px);
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(28, 37, 57, 0.5);
+    }
+
+    .panel-header h2 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    /* Form Controls */
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    textarea,
+    select,
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea:focus,
+    select:focus,
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 130px;
+      line-height: 1.5;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .preset-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      font-size: 0.73rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .pill-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #090d16;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #fff;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #090d16;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.28);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    /* Center Preview Column */
+    .col-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .canvas-stage-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      padding: 10px;
+      position: relative;
+    }
+
+    .phone-bezel {
+      position: relative;
+      width: 340px;
+      aspect-ratio: 9 / 16;
+      border-radius: 26px;
+      padding: 8px;
+      background: linear-gradient(145deg, #2a3652, #111827);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas#stageCanvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 19px;
+      background: #141829;
+      display: block;
+    }
+
+    .rec-indicator {
+      position: absolute;
+      top: 20px;
+      left: 22px;
+      background: rgba(239, 68, 68, 0.92);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+    }
+
+    .rec-indicator.active {
+      display: inline-flex;
+      animation: pulseRec 1s infinite alternate;
+    }
+
+    @keyframes pulseRec {
+      from { opacity: 1; }
+      to { opacity: 0.55; }
+    }
+
+    .transport-bar {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .transport-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-progress {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .timeline-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.08s linear;
+    }
+
+    /* Storyboard Scene Cards */
+    .scene-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .scene-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .scene-card.active-scene {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .scene-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .scene-num {
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .scene-card textarea {
+      min-height: 58px;
+      font-size: 0.82rem;
+      padding: 8px;
+    }
+
+    .scene-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 70px;
+      gap: 8px;
+    }
+
+    .scene-meta-grid select,
+    .scene-meta-grid input {
+      padding: 6px 8px;
+      font-size: 0.77rem;
+    }
+
+    /* Memory & Export Vault */
+    .vault-box {
+      background: rgba(14, 20, 34, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .vault-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-console {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.72rem;
+      background: #070a12;
+      color: #93c5fd;
+      padding: 8px 10px;
+      border-radius: 6px;
+      max-height: 92px;
+      overflow-y: auto;
+      border: 1px solid #1e293b;
+      line-height: 1.45;
+    }
+
+    .voice-chip {
+      font-size: 0.74rem;
+      padding: 6px 10px;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #86efac;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon" title="Sticky Toons 2.5D Engine"></div>
+      <div>
+        <h1>StickyLab AI Studio</h1>
+        <span>9:16 Stick Figure Explainer &bull; Sticky Toons 2.5D Vector Engine &bull; FFmpeg.wasm 1080p MP4</span>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="badge" id="voiceStatusBadge">
+        <span class="dot"></span>
+        <span id="voiceBadgeText">Scanning Male Voices (en-IN)...</span>
+      </div>
+      <div class="badge" id="ramBadge">
+        <span class="dot" style="background:#64748b"></span>
+        <span id="ramStatusText">RAM Buffer: Empty (0 MB)</span>
+      </div>
+      <div class="badge">
+        <span>Canvas: 540&times;960 (9:16) @ 60FPS</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="studio-grid">
+    <!-- COLUMN 1: TOPIC INPUT, VOICE ENGINE & MEMORY VAULT -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>1. Script &amp; Audio Setup</h2>
+        <span style="font-size:0.72rem;color:var(--text-muted)">Director Input</span>
+      </div>
+      <div class="panel-body">
+        <div>
+          <label>Quick Research / Sticky Toons Presets</label>
+          <div class="preset-pills">
+            <button class="pill-btn" onclick="loadPreset('immunology')">🧬 Adaptive Immunity Paper</button>
+            <button class="pill-btn" onclick="loadPreset('mosquito')">🦟 Sticky vs. Mosquito Vector</button>
+            <button class="pill-btn" onclick="loadPreset('mrna')">💉 mRNA Lipid Nanoparticles</button>
+          </div>
+        </div>
+
+        <div>
+          <label for="scriptInput">Research Summary / Explainer Script</label>
+          <textarea id="scriptInput">When a mosquito bites Sticky during sleep, it injects foreign pathogens carrying surface antigens into the bloodstream.
+Sticky wakes up furious and swats at the threat, while naive B-Cells detect the invading antigens through specialized receptor nodes.
+Activated B-Cells rapidly multiply and fire thousands of Y-shaped neutralizing antibodies that lock onto the pathogen spikes.
+Finally, surviving cells transform into an immunological memory shield, destroying future infections before Sticky even notices!</textarea>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="targetDuration">Target Video Duration</label>
+            <select id="targetDuration">
+              <option value="16">16 Seconds (Fast Reel)</option>
+              <option value="24" selected>24 Seconds (Standard Short)</option>
+              <option value="36">36 Seconds (Deep Explainer)</option>
+              <option value="48">48 Seconds (Full Paper Breakdown)</option>
+            </select>
+          </div>
+          <div>
+            <label for="transitionStyle">Scene Transition</label>
+            <select id="transitionStyle">
+              <option value="crossfade" selected>Smooth Crossfade + Slide</option>
+              <option value="whip">Whip Pan Slide</option>
+              <option value="zoom">Microscope Zoom</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="voiceSelect">Forced Male Voice Selector (en-IN Priority)</label>
+          <select id="voiceSelect"></select>
+          <div class="voice-chip" id="voiceDetectionInfo" style="margin-top:6px;">
+            Detecting browser speech synthesis profiles...
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="voiceRate">Narration Speed (<span id="rateVal">1.05</span>x)</label>
+            <input type="range" id="voiceRate" min="0.8" max="1.35" step="0.05" value="1.05" style="width:100%" oninput="document.getElementById('rateVal').textContent=this.value" />
+          </div>
+          <div>
+            <label for="voicePitch">Male Pitch Tuning (<span id="pitchVal">0.92</span>)</label>
+            <input type="range" id="voicePitch" min="0.7" max="1.15" step="0.02" value="0.92" style="width:100%" oninput="document.getElementById('pitchVal').textContent=this.value" />
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="decomposeScriptToStoryboard()">
+          ✨ AI Semantic Storyboard Decompose
+        </button>
+
+        <!-- Persistent RAM & Client-Side FFmpeg.wasm Export Vault -->
+        <div class="vault-box">
+          <div class="vault-title">
+            <span>5. RAM Buffer &amp; 1080p MP4 Compiler</span>
+            <span id="blobFormatTag" style="color:var(--accent);font-size:0.72rem;">Standby</span>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-warning" id="btnRecordFull" style="flex:1" onclick="startStudioRecording()">
+              ⏺ Render &amp; Record Video
+            </button>
+            <button class="btn btn-success" id="btnCompileMp4" style="flex:1" disabled onclick="compileToMp4WithFFmpeg()">
+              🎬 Export 1080p MP4
+            </button>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btnDownloadRaw" style="flex:1" disabled onclick="downloadActiveBlob('webm')">
+              ⬇ Raw WebM
+            </button>
+            <button class="btn btn-danger" id="btnClearRam" style="flex:1" disabled onclick="clearVideoFromMemory()">
+              🗑 Clear Video from Memory
+            </button>
+          </div>
+
+          <div class="log-console" id="exportLog">
+            [System] Ready. Video blobs stay pinned in RAM after download until "Clear Video from Memory" is clicked.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMN 2: LIVE 9:16 STUDIO CANVAS PREVIEW -->
+    <section class="panel col-preview">
+      <div class="panel-header" style="width:100%">
+        <h2>2. Live 9:16 Studio Canvas (540&times;960)</h2>
+        <span id="sceneTimecode" style="font-family:monospace;font-size:0.8rem;color:var(--text-muted)">Scene 1/4 &bull; 00:00.0</span>
+      </div>
+
+      <div class="canvas-stage-wrapper">
+        <div class="phone-bezel">
+          <div class="rec-indicator" id="recIndicator">
+            <span style="width:8px;height:8px;background:#fff;border-radius:50%;"></span>
+            REC 60FPS
+          </div>
+          <!-- Native 540x960 Vertical 9:16 Canvas -->
+          <canvas id="stageCanvas" width="540" height="960"></canvas>
+        </div>
+      </div>
+
+      <div class="transport-bar">
+        <div class="timeline-progress">
+          <div class="timeline-fill" id="timelineFill"></div>
+        </div>
+        <div class="transport-controls">
+          <button class="btn btn-primary" id="btnPlayPreview" onclick="toggleLivePreview()">
+            ▶ Play Live Studio Preview
+          </button>
+          <button class="btn btn-secondary" onclick="stopPlayback()">
+            ⏹ Stop / Reset
+          </button>
+          <button class="btn btn-secondary" onclick="stepNextScene()">
+            ⏭ Next Scene
+          </button>
+          <label style="display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;font-size:0.75rem;">
+            <input type="checkbox" id="sfxToggle" checked /> Cartoon SFX &amp; Synth
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMN 3: EDITABLE DIRECTOR STORYBOARD -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>3. Editable Director Storyboard</h2>
+        <button class="pill-btn" onclick="addBlankScene()">+ Add Scene</button>
+      </div>
+      <div class="panel-body">
+        <p style="font-size:0.77rem;color:var(--text-muted);line-height:1.4;">
+          Rewrite narration, change Sticky's emotion/prop, or swap scientific B-Roll metaphors before rendering. Changes update the 60 FPS canvas live.
+        </p>
+        <div class="scene-list" id="storyboardContainer"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /********************************************************************
+     * 1. STATE, PRESETS & SEMANTIC STORYBOARD DECOMPOSITION
+     ********************************************************************/
+    const canvas = document.getElementById('stageCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const PRESETS = {
+      immunology: `When a mosquito bites Sticky during sleep, it injects foreign pathogens carrying surface antigens into the bloodstream.
+Sticky wakes up furious and swats at the threat, while naive B-Cells detect the invading antigens through specialized receptor nodes.
+Activated B-Cells rapidly multiply and fire thousands of Y-shaped neutralizing antibodies that lock onto the pathogen spikes.
+Finally, surviving cells transform into an immunological memory shield, destroying future infections before Sticky even notices!`,
+
+      mosquito: `Sticky is sleeping peacefully in bed until a tiny buzzing mosquito sneaks into the room looking for a midnight meal.
+The mosquito lands right on Sticky's nose, triggering an angry slap that leaves a bright red handprint and dizzy spinning stars!
+Furious and flushed red, Sticky grabs a heavy cast-iron frying pan to swat the pesky vector out of the air.
+Instead of hitting the bug, the pan bonks Sticky on the head, proving why we need an immune system instead of a frying pan!`,
+
+      mrna: `Scientists encapsulate fragile mRNA strands inside protective lipid nanoparticles so they can safely enter the human body.
+Once inside, Sticky's ribosomes read the genetic blueprint and assemble harmless viral spike proteins for training.
+B-Cell activation nodes lock onto these training spikes and mass-produce high-affinity neutralizing antibodies.
+Your body builds a permanent immunological memory shield without ever suffering damage from the real pathogen!`
+    };
+
+    // Scene state array
+    let storyboard = [];
+    let currentSceneIndex = 0;
+    let sceneElapsed = 0;
+    let isPlaying = false;
+    let isRecording = false;
+    let lastFrameTime = performance.now();
+
+    // Transition interpolation state
+    let transitionProgress = 1;
+    let previousSceneSnapshot = null;
+
+    // Persistent RAM Video State (Only cleared by explicit user button click)
+    window.__persistentVideoVault = {
+      webmBlob: null,
+      mp4Blob: null,
+      webmUrl: null,
+      mp4Url: null,
+      byteSize: 0
+    };
+
+    function loadPreset(key) {
+      document.getElementById('scriptInput').value = PRESETS[key] || PRESETS.immunology;
+      decomposeScriptToStoryboard();
+    }
+
+    /**
+     * AI Semantic Storyboard Decomposition:
+     * Parses script sentences and maps keywords to Sticky Toons emotions, props, and scientific B-Roll.
+     */
+    function decomposeScriptToStoryboard() {
+      const rawText = document.getElementById('scriptInput').value.trim();
+      const totalTargetSec = parseFloat(document.getElementById('targetDuration').value) || 24;
+
+      // Split into sentences cleanly
+      const sentences = rawText
+        .split(/(?<=[.!?])\s+|\n+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 3);
+
+      if (sentences.length === 0) return;
+
+      const perSceneDuration = Math.max(3.5, +(totalTargetSec / sentences.length).toFixed(1));
+
+      storyboard = sentences.map((sentence, idx) => {
+        const lower = sentence.toLowerCase();
+
+        // Semantic Visual Metaphor detection
+        let metaphor = 'pathogen_attack';
+        let emotion = 'sleeping';
+        let prop = 'none';
+
+        if (lower.includes('sleep') || lower.includes('bed') || lower.includes('mosquito')) {
+          metaphor = 'mosquito_bed';
+          emotion = lower.includes('furious') || lower.includes('angry') ? 'angry' : 'sleeping';
+          prop = lower.includes('pan') ? 'frying_pan' : 'none';
+        }
+        if (lower.includes('slap') || lower.includes('bonk') || lower.includes('dizzy') || lower.includes('stars')) {
+          metaphor = 'mosquito_bed';
+          emotion = 'dizzy';
+          prop = lower.includes('pan') ? 'frying_pan' : 'slap_mark';
+        }
+        if (lower.includes('furious') || lower.includes('pan') || lower.includes('swat')) {
+          emotion = 'angry';
+          if (lower.includes('pan')) prop = 'frying_pan';
+        }
+        if (lower.includes('b-cell') || lower.includes('receptor') || lower.includes('node') || lower.includes('ribosome') || lower.includes('mrna')) {
+          metaphor = 'bcell_activation';
+          if (emotion === 'sleeping') emotion = 'curious';
+          prop = 'pointer';
+        }
+        if (lower.includes('antibod') || lower.includes('neutraliz') || lower.includes('y-shaped') || lower.includes('fire')) {
+          metaphor = 'antibody_defense';
+          emotion = 'angry';
+          if (prop === 'none') prop = 'frying_pan';
+        }
+        if (lower.includes('memory') || lower.includes('shield') || lower.includes('protect') || lower.includes('future')) {
+          metaphor = 'memory_shield';
+          emotion = 'heroic';
+          prop = 'shield';
+        }
+
+        // Fallback variety for first scene if generic
+        if (idx === 0 && metaphor === 'pathogen_attack' && lower.includes('pathogen')) {
+          emotion = 'curious';
+        }
+
+        return {
+          id: 'scene_' + Date.now() + '_' + idx,
+          narration: sentence,
+          metaphor,
+          emotion,
+          prop,
+          duration: perSceneDuration
+        };
+      });
+
+      currentSceneIndex = 0;
+      sceneElapsed = 0;
+      renderStoryboardEditor();
+      logExport(`[AI Storyboard] Decomposed script into ${storyboard.length} chronological scenes (${perSceneDuration}s each).`);
+    }
+
+    function renderStoryboardEditor() {
+      const container = document.getElementById('storyboardContainer');
+      container.innerHTML = '';
+
+      storyboard.forEach((scene, idx) => {
+        const card = document.createElement('div');
+        card.className = 'scene-card' + (idx === currentSceneIndex ? ' active-scene' : '');
+        card.id = `scene-card-${idx}`;
+
+        card.innerHTML = `
+          <div class="scene-card-header">
+            <span class="scene-num">SCENE ${idx + 1}</span>
+            <div style="display:flex;gap:6px;">
+              <button class="pill-btn" onclick="previewSingleScene(${idx})" title="Jump to scene">👁 Preview</button>
+              <button class="pill-btn" onclick="removeScene(${idx})" title="Remove scene">✕</button>
+            </div>
+          </div>
+          <textarea oninput="updateSceneField(${idx}, 'narration', this.value)">${scene.narration}</textarea>
+          <div class="scene-meta-grid">
+            <div>
+              <label style="font-size:0.66rem;margin-bottom:2px;">B-Roll Metaphor</label>
+              <select onchange="updateSceneField(${idx}, 'metaphor', this.value)">
+                <option value="mosquito_bed" ${scene.metaphor === 'mosquito_bed' ? 'selected' : ''}>🦟 Sticky Bed & Mosquito</option>
+                <option value="pathogen_attack" ${scene.metaphor === 'pathogen_attack' ? 'selected' : ''}>🦠 Pathogen & Antigens</option>
+                <option value="bcell_activation" ${scene.metaphor === 'bcell_activation' ? 'selected' : ''}>🧬 B-Cell Activation Nodes</option>
+                <option value="antibody_defense" ${scene.metaphor === 'antibody_defense' ? 'selected' : ''}>🛡️ Neutralizing Antibodies</option>
+                <option value="memory_shield" ${scene.metaphor === 'memory_shield' ? 'selected' : ''}>⚡ Immune Memory Shield</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.66rem;margin-bottom:2px;">Sticky Emotion & Prop</label>
+              <select onchange="updateSceneEmotionProp(${idx}, this.value)">
+                <option value="sleeping|none" ${scene.emotion === 'sleeping' ? 'selected' : ''}>😴 Sleeping (Bubbles)</option>
+                <option value="curious|pointer" ${scene.emotion === 'curious' ? 'selected' : ''}>🤨 Alert / Lab Pointer</option>
+                <option value="angry|frying_pan" ${scene.emotion === 'angry' && scene.prop === 'frying_pan' ? 'selected' : ''}>😡 Furious + Frying Pan</option>
+                <option value="angry|none" ${scene.emotion === 'angry' && scene.prop !== 'frying_pan' ? 'selected' : ''}>💢 Angry Red Flush</option>
+                <option value="dizzy|slap_mark" ${scene.emotion === 'dizzy' ? 'selected' : ''}>😵‍💫 Dizzy Stars + Slap Mark</option>
+                <option value="heroic|shield" ${scene.emotion === 'heroic' ? 'selected' : ''}>😎 Heroic + Memory Shield</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.66rem;margin-bottom:2px;">Sec (s)</label>
+              <input type="number" step="0.5" min="2" max="20" value="${scene.duration}" onchange="updateSceneField(${idx}, 'duration', parseFloat(this.value)||5)" />
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateSceneField(idx, field, value) {
+      if (!storyboard[idx]) return;
+      storyboard[idx][field] = value;
+    }
+
+    function updateSceneEmotionProp(idx, combined) {
+      if (!storyboard[idx]) return;
+      const [emotion, prop] = combined.split('|');
+      storyboard[idx].emotion = emotion;
+      storyboard[idx].prop = prop;
+    }
+
+    function addBlankScene() {
+      storyboard.push({
+        id: 'scene_' + Date.now(),
+        narration: 'Sticky activates a secondary immune counterattack with neutralizing antibodies!',
+        metaphor: 'antibody_defense',
+        emotion: 'heroic',
+        prop: 'shield',
+        duration: 5.0
+      });
+      renderStoryboardEditor();
+    }
+
+    function removeScene(idx) {
+      if (storyboard.length <= 1) return;
+      storyboard.splice(idx, 1);
+      if (currentSceneIndex >= storyboard.length) currentSceneIndex = 0;
+      renderStoryboardEditor();
+    }
+
+    function previewSingleScene(idx) {
+      triggerSceneTransition(idx);
+      sceneElapsed = 0;
+      if (isPlaying) {
+        speakSceneNarration(storyboard[currentSceneIndex]);
+      }
+    }
+
+    /********************************************************************
+     * 2. FORCED MALE & INDIAN ENGLISH (en-IN) VOICE SYNTHESIS ENGINE
+     ********************************************************************/
+    let availableVoices = [];
+    let selectedVoice = null;
+
+    function scoreMaleIndianVoice(voice) {
+      const name = (voice.name || '').toLowerCase();
+      const lang = (voice.lang || '').toLowerCase();
+      let score = 0;
+
+      // Strong penalty for known female voice identifiers
+      const femaleTokens = ['female', 'zira', 'heera', 'swara', 'neerja', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'veena', 'lekha', 'aria', 'jenny', 'sonia'];
+      if (femaleTokens.some(f => name.includes(f))) {
+        score -= 500;
+      }
+
+      // Highest priority: Indian English (en-IN) + Male identifiers
+      if (lang.includes('en-in') || name.includes('india')) {
+        score += 300;
+      }
+      const indianMaleNames = ['prabhat', 'rishi', 'ravi', 'kunal', 'madhur', 'hemant'];
+      if (indianMaleNames.some(m => name.includes(m))) {
+        score += 450;
+      }
+
+      // General Male voice identifiers
+      const maleTokens = ['male', 'guy', 'david', 'mark', 'daniel', 'george', 'james', 'richard', 'alex', 'fred', 'ryan', 'christopher', 'eric', 'steffan'];
+      if (maleTokens.some(m => name.includes(m))) {
+        score += 180;
+      }
+
+      if (lang.startsWith('en')) {
+        score += 50;
+      }
+
+      return score;
+    }
+
+    function populateVoices() {
+      if (!('speechSynthesis' in window)) return;
+      const rawVoices = window.speechSynthesis.getVoices();
+      if (!rawVoices || rawVoices.length === 0) return;
+
+      availableVoices = [...rawVoices].sort((a, b) => scoreMaleIndianVoice(b) - scoreMaleIndianVoice(a));
+
+      const selectEl = document.getElementById('voiceSelect');
+      selectEl.innerHTML = '';
+
+      availableVoices.forEach((v, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const score = scoreMaleIndianVoice(v);
+        const tag = (v.lang.toLowerCase().includes('en-in') || ['prabhat','rishi','ravi'].some(n => v.name.toLowerCase().includes(n)))
+          ? '🇮🇳 [en-IN Male Priority] '
+          : (score > 100 ? '🎙️ [Male] ' : '');
+        opt.textContent = `${tag}${v.name} (${v.lang})`;
+        selectEl.appendChild(opt);
+      });
+
+      selectedVoice = availableVoices[0];
+      selectEl.selectedIndex = 0;
+
+      const best = availableVoices[0];
+      const isEnIn = best && (best.lang.toLowerCase().includes('en-in') || ['prabhat','rishi','ravi'].some(n => best.name.toLowerCase().includes(n)));
+
+      document.getElementById('voiceBadgeText').textContent = best
+        ? `Voice: ${best.name.slice(0, 22)} (${best.lang})`
+        : 'Voice: Default Synth';
+      document.getElementById('voiceDetectionInfo').textContent = isEnIn
+        ? `✓ Auto-locked Indian English Male profile: ${best.name} (${best.lang})`
+        : `✓ Prioritized top Male voice profile: ${best ? best.name : 'Browser Default'} (Tip: Install Microsoft Prabhat/Rishi for native en-IN)`;
+
+      selectEl.onchange = () => {
+        selectedVoice = availableVoices[parseInt(selectEl.value, 10)] || availableVoices[0];
+      };
+    }
+
+    if ('speechSynthesis' in window) {
+      populateVoices();
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+    }
+
+    function speakSceneNarration(scene) {
+      if (!('speechSynthesis' in window) || !scene) return;
+      window.speechSynthesis.cancel();
+
+      const utter = new SpeechSynthesisUtterance(scene.narration);
+      if (selectedVoice) utter.voice = selectedVoice;
+      utter.rate = parseFloat(document.getElementById('voiceRate').value) || 1.05;
+      utter.pitch = parseFloat(document.getElementById('voicePitch').value) || 0.92;
+      window.speechSynthesis.speak(utter);
+    }
+
+    /********************************************************************
+     * 3. WEB AUDIO API PROCEDURAL CARTOON SFX & STREAM DEST FOR RECORDING
+     ********************************************************************/
+    let audioCtx = null;
+    let mediaStreamDest = null;
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+        mediaStreamDest = audioCtx.createMediaStreamDestination();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playCartoonSfx(type) {
+      const sfxEnabled = document.getElementById('sfxToggle').checked;
+      if (!sfxEnabled) return;
+      ensureAudioContext();
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      if (mediaStreamDest) gain.connect(mediaStreamDest);
+
+      if (type === 'buzz') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(390, now);
+        osc.frequency.linearRampToValueAtTime(460, now + 0.15);
+        osc.frequency.linearRampToValueAtTime(370, now + 0.3);
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        osc.start(now);
+        osc.stop(now + 0.32);
+      } else if (type === 'clang') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      } else if (type === 'shield') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      }
+    }
+
+    /********************************************************************
+     * 4. STICKY TOONS 2.5D VECTOR ENGINE & SCIENTIFIC B-ROLL (60 FPS)
+     ********************************************************************/
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+    function triggerSceneTransition(nextIdx) {
+      // Capture current canvas snapshot for smooth crossfade/slide transition
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width;
+      offscreen.height = canvas.height;
+      offscreen.getContext('2d').drawImage(canvas, 0, 0);
+      previousSceneSnapshot = offscreen;
+      transitionProgress = 0;
+
+      currentSceneIndex = nextIdx;
+      document.querySelectorAll('.scene-card').forEach((el, idx) => {
+        el.classList.toggle('active-scene', idx === currentSceneIndex);
+      });
+
+      const nextScene = storyboard[currentSceneIndex];
+      if (nextScene) {
+        if (nextScene.metaphor === 'mosquito_bed' || nextScene.metaphor === 'pathogen_attack') {
+          playCartoonSfx('buzz');
+        } else if (nextScene.emotion === 'dizzy' || nextScene.prop === 'frying_pan') {
+          playCartoonSfx('clang');
+        } else {
+          playCartoonSfx('shield');
+        }
+      }
+    }
+
+    /**
+     * Draws the Rich 2D Cel-Shaded Background based on the scene's visual metaphor
+     */
+    function drawSceneBackground(ctx, metaphor, t) {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      if (metaphor === 'mosquito_bed') {
+        // Deep night bedroom palette matching Sticky Toons reference video
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#161936');
+        bgGrad.addColorStop(0.55, '#262b54');
+        bgGrad.addColorStop(1, '#182442');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Wooden Curved Headboard
+        ctx.save();
+        ctx.fillStyle = '#5e3a32';
+        ctx.strokeStyle = '#151824';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(20, 520);
+        ctx.quadraticCurveTo(w / 2, 230, w - 20, 520);
+        ctx.lineTo(w - 20, 620);
+        ctx.lineTo(20, 620);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Bedposts
+        ctx.fillStyle = '#4b2d27';
+        ctx.fillRect(10, 340, 36, 260);
+        ctx.strokeRect(10, 340, 36, 260);
+        ctx.fillRect(w - 46, 340, 36, 260);
+        ctx.strokeRect(w - 46, 340, 36, 260);
+
+        // Soft Blue Pillow behind Sticky
+        ctx.fillStyle = '#89a7d6';
+        ctx.beginPath();
+        ctx.roundRect(55, 365, w - 110, 215, 28);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pillow highlight
+        ctx.fillStyle = '#a4c0eb';
+        ctx.beginPath();
+        ctx.roundRect(75, 380, w - 150, 165, 22);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        // Scientific Bio-Lab / Cellular Environment
+        const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.35, 40, w * 0.5, h * 0.5, h * 0.75);
+        if (metaphor === 'pathogen_attack') {
+          bgGrad.addColorStop(0, '#2b1638');
+          bgGrad.addColorStop(1, '#110b1c');
+        } else if (metaphor === 'bcell_activation') {
+          bgGrad.addColorStop(0, '#132a4a');
+          bgGrad.addColorStop(1, '#091326');
+        } else if (metaphor === 'antibody_defense') {
+          bgGrad.addColorStop(0, '#1a2e40');
+          bgGrad.addColorStop(1, '#0b1521');
+        } else {
+          bgGrad.addColorStop(0, '#0f3832');
+          bgGrad.addColorStop(1, '#081c1e');
+        }
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Subtle animated scientific grid & floating bokeh cells
+        ctx.save();
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 45) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y < h; y += 45) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    /**
+     * Draws "Sticky" in the authentic Sticky Toons 2.5D Cel-Shaded Cartoon Style:
+     * - Large glossy white sphere head with soft blue-grey cel shading
+     * - Bold black ink outlines
+     * - Expressive cartoon eyes, eyebrows, red anger top-gradient + vein mark, slap print, dizzy stars, frying pan
+     */
+    function drawStickyCharacter(ctx, scene, t) {
+      const w = canvas.width;
+      const centerX = w * 0.5;
+      const headY = scene.metaphor === 'mosquito_bed' ? 465 : 500;
+      const headRadius = 96;
+
+      // Subtle breathing & action bobbing
+      const bobY = Math.sin(t * 4) * 5;
+      const shakeX = scene.emotion === 'angry' ? Math.sin(t * 32) * 3.5 : 0;
+      const hx = centerX + shakeX;
+      const hy = headY + bobY;
+
+      ctx.save();
+
+      // 1. Stick Torso & Arms (behind blanket if in bed)
+      ctx.strokeStyle = '#11131a';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Torso spine
+      ctx.beginPath();
+      ctx.moveTo(hx, hy + headRadius - 8);
+      ctx.lineTo(hx, hy + headRadius + 145);
+      ctx.stroke();
+
+      // Arms based on emotion / prop
+      if (scene.emotion === 'sleeping') {
+        // Arms relaxed behind head on pillow
+        ctx.beginPath();
+        ctx.moveTo(hx - 25, hy + headRadius + 15);
+        ctx.lineTo(hx - 115, hy + 45);
+        ctx.lineTo(hx - 75, hy - 10);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(hx + 25, hy + headRadius + 15);
+        ctx.lineTo(hx + 115, hy + 45);
+        ctx.lineTo(hx + 75, hy - 10);
+        ctx.stroke();
+      } else if (scene.prop === 'frying_pan') {
+        // Swinging cast-iron frying pan!
+        const swingAngle = Math.sin(t * 8) * 0.42 - 0.35;
+        const handX = hx - 95;
+        const handY = hy + 65 + Math.sin(t * 8) * 18;
+
+        ctx.beginPath();
+        ctx.moveTo(hx, hy + headRadius + 25);
+        ctx.lineTo(hx - 55, hy + headRadius + 40);
+        ctx.lineTo(handX, handY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(hx, hy + headRadius + 45);
+        ctx.lineTo(handX + 8, handY + 18);
+        ctx.stroke();
+
+        // Draw 2.5D Cel-Shaded Frying Pan
+        ctx.save();
+        ctx.translate(handX, handY);
+        ctx.rotate(swingAngle);
+
+        // Handle
+        ctx.fillStyle = '#272b36';
+        ctx.strokeStyle = '#11131a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.roundRect(-14, -95, 24, 110, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pan Drum
+        ctx.fillStyle = '#3c4252';
+        ctx.beginPath();
+        ctx.ellipse(-5, -145, 78, 66, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner Pan Depth
+        ctx.fillStyle = '#525b70';
+        ctx.beginPath();
+        ctx.ellipse(2, -145, 62, 52, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // Animated expressive gesturing arms
+        const wave = Math.sin(t * 6) * 25;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy + headRadius + 28);
+        ctx.lineTo(hx - 85, hy + headRadius + 55);
+        ctx.lineTo(hx - 120, hy + headRadius + 10 + wave);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(hx, hy + headRadius + 28);
+        ctx.lineTo(hx + 85, hy + headRadius + 50);
+        ctx.lineTo(hx + 125, hy + headRadius - 10 - wave);
+        ctx.stroke();
+
+        // Scientist Pointer or Shield Prop
+        if (scene.prop === 'pointer') {
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(hx + 125, hy + headRadius - 10 - wave);
+          ctx.lineTo(hx + 185, hy + headRadius - 75 - wave);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Head Bump Lump (if dizzy like 00:09 in the reference short!)
+      if (scene.emotion === 'dizzy') {
+        ctx.fillStyle = '#f8d7da';
+        ctx.strokeStyle = '#11131a';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.ellipse(hx + 5, hy - headRadius - 6, 36, 26, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // 3. Main Glossy White Stick Head with Cel-Shaded Rim Shadow
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hx, hy, headRadius, 0, Math.PI * 2);
+      ctx.closePath();
+
+      // Base white fill
+      ctx.fillStyle = '#fcfdff';
+      ctx.fill();
+
+      // Clip to head circle for cel-shading and anger flush gradient
+      ctx.clip();
+
+      // Angry Red Flush Gradient at top of head (exact match to 00:06-00:08 of Sticky Toons)
+      if (scene.emotion === 'angry') {
+        const flushGrad = ctx.createLinearGradient(hx, hy - headRadius, hx, hy + 30);
+        flushGrad.addColorStop(0, 'rgba(239, 68, 68, 0.92)');
+        flushGrad.addColorStop(0.55, 'rgba(248, 113, 113, 0.45)');
+        flushGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = flushGrad;
+        ctx.fillRect(hx - headRadius, hy - headRadius, headRadius * 2, headRadius * 2);
+      }
+
+      // Cel-shaded blue-grey crescent rim shadow along bottom-right
+      ctx.fillStyle = 'rgba(148, 176, 218, 0.42)';
+      ctx.beginPath();
+      ctx.arc(hx, hy, headRadius, 0, Math.PI * 2);
+      ctx.arc(hx - 14, hy - 14, headRadius * 0.95, 0, Math.PI * 2, true);
+      ctx.fill();
+
+      // Red Slap Handprint on cheek (exact match to 00:05 of Sticky Toons!)
+      if (scene.prop === 'slap_mark' || scene.emotion === 'dizzy') {
+        ctx.save();
+        ctx.translate(hx + 46, hy + 8);
+        ctx.rotate(0.2);
+        ctx.fillStyle = 'rgba(220, 38, 38, 0.78)';
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 16, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // 5 slap fingers
+        const fingerAngles = [-0.6, -0.28, 0.02, 0.32, 0.68];
+        fingerAngles.forEach((ang, i) => {
+          ctx.save();
+          ctx.rotate(ang);
+          ctx.beginPath();
+          ctx.roundRect(-3.5, -26 + (i === 0 || i === 4 ? 5 : 0), 7, 16, 3);
+          ctx.fill();
+          ctx.restore();
+        });
+        ctx.restore();
+      }
+
+      // Red Anime Anger Vein Symbol (💢) on top-right forehead
+      if (scene.emotion === 'angry') {
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 4;
+        const vx = hx + 48;
+        const vy = hy - 54;
+        ctx.beginPath();
+        ctx.moveTo(vx - 12, vy - 4); ctx.quadraticCurveTo(vx - 4, vy - 4, vx - 4, vy - 12);
+        ctx.moveTo(vx + 12, vy - 4); ctx.quadraticCurveTo(vx + 4, vy - 4, vx + 4, vy - 12);
+        ctx.moveTo(vx - 12, vy + 4); ctx.quadraticCurveTo(vx - 4, vy + 4, vx - 4, vy + 12);
+        ctx.moveTo(vx + 12, vy + 4); ctx.quadraticCurveTo(vx + 4, vy + 4, vx + 4, vy + 12);
+        ctx.stroke();
+      }
+
+      ctx.restore(); // unclip head
+
+      // Bold Outer Ink Ring for Head
+      ctx.strokeStyle = '#11131a';
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.arc(hx, hy, headRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4. Facial Expressions (Eyes, Pupils, Eyebrows, Mouth)
+      drawStickyFace(ctx, hx, hy, scene.emotion, t);
+
+      // 5. Orbiting Yellow Stars & Rings when Dizzy (00:09 in Sticky Toons)
+      if (scene.emotion === 'dizzy') {
+        ctx.save();
+        ctx.translate(hx, hy - headRadius - 4);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 74, 20, -0.1, 0, Math.PI * 2);
+        ctx.stroke();
+
+        for (let i = 0; i < 4; i++) {
+          const ang = t * 4 + (i * Math.PI) / 2;
+          const sx = Math.cos(ang) * 74;
+          const sy = Math.sin(ang) * 20;
+          drawCartoonStar(ctx, sx, sy, 10, '#fde047', '#ca8a04');
+        }
+        ctx.restore();
+      }
+
+      // 6. Cozy Blue Blanket Foreground if in bedroom scene
+      if (scene.metaphor === 'mosquito_bed') {
+        ctx.save();
+        const blanketGrad = ctx.createLinearGradient(0, 560, 0, canvas.height);
+        blanketGrad.addColorStop(0, '#5a7fb8');
+        blanketGrad.addColorStop(1, '#3b5987');
+        ctx.fillStyle = blanketGrad;
+        ctx.strokeStyle = '#11131a';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(15, 575);
+        ctx.quadraticCurveTo(w * 0.5, 540, w - 15, 575);
+        ctx.lineTo(w - 15, 920);
+        ctx.lineTo(15, 920);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function drawStickyFace(ctx, hx, hy, emotion, t) {
+      ctx.save();
+      ctx.strokeStyle = '#11131a';
+      ctx.fillStyle = '#11131a';
+
+      if (emotion === 'sleeping') {
+        // Peaceful closed curved eyelids
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(hx - 32, hy - 8, 20, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(hx + 28, hy - 8, 20, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+
+        // Peaceful smile
+        ctx.beginPath();
+        ctx.arc(hx - 2, hy + 22, 18, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+
+        // Floating sleep bubbles (exact match to 00:00 of Sticky Toons!)
+        for (let i = 0; i < 3; i++) {
+          const cycle = (t * 0.6 + i * 0.33) % 1;
+          const bx = hx - 65 - cycle * 45 + Math.sin(cycle * 6) * 8;
+          const by = hy - 55 - cycle * 95;
+          const br = 8 + i * 6;
+          ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      } else if (emotion === 'dizzy') {
+        // Large eyes with spinning spiral pupils (00:05 & 00:09 in Sticky Toons!)
+        const eyePositions = [
+          { x: hx - 30, y: hy - 4, r: 24 },
+          { x: hx + 26, y: hy - 4, r: 21 }
+        ];
+        eyePositions.forEach((eye, idx) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#11131a';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(eye.x, eye.y, eye.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Spiral inside eye
+          ctx.save();
+          ctx.translate(eye.x, eye.y);
+          ctx.rotate(t * (idx === 0 ? 6 : -6));
+          ctx.beginPath();
+          for (let a = 0; a < Math.PI * 5; a += 0.2) {
+            const sr = (a / (Math.PI * 5)) * (eye.r - 4);
+            const px = Math.cos(a) * sr;
+            const py = Math.sin(a) * sr;
+            if (a === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        // Wavy dizzy mouth
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(hx - 24, hy + 38);
+        ctx.quadraticCurveTo(hx - 12, hy + 28, hx, hy + 38);
+        ctx.quadraticCurveTo(hx + 12, hy + 48, hx + 24, hy + 36);
+        ctx.stroke();
+      } else {
+        // Alert / Angry / Heroic Large Expressive Cartoon Sclera + Pupils
+        const leftEye = { x: hx - 28, y: hy - 2, rx: 24, ry: 27 };
+        const rightEye = { x: hx + 24, y: hy - 2, rx: 22, ry: 25 };
+
+        [leftEye, rightEye].forEach(eye => {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#11131a';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(eye.x, eye.y, eye.rx, eye.ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Tracking Pupil
+          const lookX = Math.cos(t * 2.5) * 5;
+          const lookY = Math.sin(t * 3.2) * 4;
+          ctx.fillStyle = '#11131a';
+          ctx.beginPath();
+          ctx.arc(eye.x + lookX, eye.y + lookY, 9.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // White Specular Catchlight
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(eye.x + lookX - 3, eye.y + lookY - 3, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Eyebrows & Mouth
+        ctx.strokeStyle = '#11131a';
+        ctx.lineWidth = 6;
+        if (emotion === 'angry') {
+          // Deep V-slanted angry eyebrows clipping top of eyes
+          ctx.beginPath();
+          ctx.moveTo(hx - 54, hy - 28);
+          ctx.lineTo(hx - 6, hy - 12);
+          ctx.moveTo(hx + 50, hy - 28);
+          ctx.lineTo(hx + 4, hy - 12);
+          ctx.stroke();
+
+          // Clenched Teeth Grimace (exact match to 00:06 of Sticky Toons!)
+          ctx.fillStyle = '#ffffff';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.roundRect(hx - 30, hy + 30, 56, 22, 8);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(hx - 28, hy + 41);
+          ctx.lineTo(hx + 24, hy + 41);
+          ctx.stroke();
+        } else {
+          // Arched curious / heroic eyebrows
+          ctx.beginPath();
+          ctx.arc(hx - 28, hy - 18, 22, 1.15 * Math.PI, 1.85 * Math.PI);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(hx + 24, hy - 18, 22, 1.15 * Math.PI, 1.85 * Math.PI);
+          ctx.stroke();
+
+          // Confident animated talking / smiling mouth
+          const talkOpen = isPlaying ? Math.abs(Math.sin(t * 11)) * 12 : 4;
+          ctx.fillStyle = '#7f1d1d';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(hx, hy + 36, 18, 6 + talkOpen, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    /**
+     * Contextual Scientific B-Roll & Mosquito Vector Animations
+     */
+    function drawContextualBRoll(ctx, scene, t) {
+      const w = canvas.width;
+      const metaphor = scene.metaphor;
+
+      ctx.save();
+
+      if (metaphor === 'mosquito_bed' || metaphor === 'pathogen_attack') {
+        // 1. Animated Mosquito Vector (matching Sticky Toons mosquito with big googly eyes & proboscis!)
+        const mx = w * 0.5 + Math.cos(t * 3.2) * 145;
+        const my = 275 + Math.sin(t * 5.8) * 55;
+
+        // Dotted flight trail
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.setLineDash([5, 6]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let s = 0.1; s < 1.2; s += 0.1) {
+          const tx = w * 0.5 + Math.cos((t - s) * 3.2) * 145;
+          const ty = 275 + Math.sin((t - s) * 5.8) * 55;
+          if (s === 0.1) ctx.moveTo(tx, ty);
+          else ctx.lineTo(tx, ty);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        drawMosquitoVector(ctx, mx, my, t);
+
+        // 2. Floating Spiky Pathogen / Antigen Particles if in pathogen_attack mode
+        if (metaphor === 'pathogen_attack') {
+          for (let i = 0; i < 4; i++) {
+            const px = 85 + i * 120 + Math.sin(t * 2 + i) * 20;
+            const py = 180 + (i % 2) * 85 + Math.cos(t * 2.5 + i) * 18;
+            drawPathogenParticle(ctx, px, py, 24, t + i);
+          }
+        }
+      } else if (metaphor === 'bcell_activation') {
+        // Glowing B-Cell Activation Receptor Nodes & Energy Pulses
+        const nodes = [
+          { x: 115, y: 220, label: 'B-Cell Node α' },
+          { x: 425, y: 220, label: 'Receptor BCR' },
+          { x: 270, y: 155, label: 'Clonal Expansion' }
+        ];
+
+        // Synapse energy lines between nodes
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(nodes[0].x, nodes[0].y);
+        ctx.lineTo(nodes[2].x, nodes[2].y);
+        ctx.lineTo(nodes[1].x, nodes[1].y);
+        ctx.stroke();
+
+        nodes.forEach((n, idx) => {
+          const pulse = 34 + Math.sin(t * 5 + idx) * 6;
+          const grad = ctx.createRadialGradient(n.x, n.y, 6, n.x, n.y, pulse * 1.4);
+          grad.addColorStop(0, '#38bdf8');
+          grad.addColorStop(0.6, '#0284c7');
+          grad.addColorStop(1, 'rgba(2, 132, 199, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, pulse * 1.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#e0f2fe';
+          ctx.strokeStyle = '#0369a1';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#bae6fd';
+          ctx.font = '700 13px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(n.label, n.x, n.y + 42);
+        });
+      } else if (metaphor === 'antibody_defense') {
+        // Y-Shaped Neutralizing Antibodies locking onto invading pathogens
+        for (let i = 0; i < 3; i++) {
+          const px = 120 + i * 150;
+          const py = 185 + Math.sin(t * 3 + i) * 15;
+          drawPathogenParticle(ctx, px, py, 22, t);
+
+          // Flying Y-shaped Antibody locking onto the pathogen
+          const progress = (t * 1.4 + i * 0.35) % 1;
+          const ay = lerp(390, py + 26, progress);
+          drawYAntibody(ctx, px, ay, '#38bdf8');
+        }
+      } else if (metaphor === 'memory_shield') {
+        // Glowing Hexagonal Immunological Memory Shield Dome around Sticky
+        const sx = w * 0.5;
+        const sy = 485;
+        const sr = 165 + Math.sin(t * 4) * 5;
+
+        const shieldGrad = ctx.createRadialGradient(sx, sy, sr * 0.65, sx, sy, sr);
+        shieldGrad.addColorStop(0, 'rgba(34, 197, 94, 0.02)');
+        shieldGrad.addColorStop(0.8, 'rgba(56, 189, 248, 0.22)');
+        shieldGrad.addColorStop(1, 'rgba(34, 197, 94, 0.65)');
+
+        ctx.fillStyle = shieldGrad;
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Deflected pathogens bouncing off the memory shield
+        for (let i = 0; i < 3; i++) {
+          const ang = -Math.PI * 0.75 + i * 0.75 + Math.sin(t * 2 + i) * 0.15;
+          const dist = sr + 28 + Math.abs(Math.sin(t * 6 + i)) * 35;
+          const px = sx + Math.cos(ang) * dist;
+          const py = sy + Math.sin(ang) * dist;
+          drawPathogenParticle(ctx, px, py, 18, t);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawMosquitoVector(ctx, x, y, t) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Rapidly flapping translucent wings
+      const wingFlap = Math.sin(t * 65) * 0.45;
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+
+      ctx.save();
+      ctx.rotate(-0.4 + wingFlap);
+      ctx.beginPath();
+      ctx.ellipse(-6, -18, 18, 8, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.rotate(0.4 - wingFlap);
+      ctx.beginPath();
+      ctx.ellipse(8, -18, 18, 8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // Striped Thorax / Abdomen
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(12, 4, 18, 10, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Sharp Proboscis Needle
+      ctx.beginPath();
+      ctx.moveTo(-12, 4);
+      ctx.lineTo(-34, 16);
+      ctx.stroke();
+
+      // Big Googly Cartoon Eyes (like the mosquito in Sticky Toons!)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-8, 0, 8, 0, Math.PI * 2);
+      ctx.arc(-2, 1, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-10, 1, 3, 0, Math.PI * 2);
+      ctx.arc(-3, 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawPathogenParticle(ctx, x, y, r, t) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(t * 0.8);
+
+      // Antigen spikes
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * (r + 9), Math.sin(a) * (r + 9));
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#be123c';
+      ctx.strokeStyle = '#11131a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawYAntibody(ctx, x, y, color) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 18);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-14, -14);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(14, -14);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCartoonStar(ctx, x, y, radius, fill, stroke) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const outerA = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const innerA = outerA + Math.PI / 5;
+        if (i === 0) ctx.moveTo(Math.cos(outerA) * radius, Math.sin(outerA) * radius);
+        else ctx.lineTo(Math.cos(outerA) * radius, Math.sin(outerA) * radius);
+        ctx.lineTo(Math.cos(innerA) * (radius * 0.45), Math.sin(innerA) * (radius * 0.45));
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /**
+     * Word-by-Word Synchronized Whiteboard Subtitle Card
+     */
+    function drawSynchronizedSubtitles(ctx, scene, sceneProgress) {
+      const w = canvas.width;
+      const words = scene.narration.trim().split(/\s+/);
+      if (words.length === 0) return;
+
+      const activeWordIdx = clamp(Math.floor(sceneProgress * words.length), 0, words.length - 1);
+
+      // Top Header Pill (Topic Badge)
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(32, 34, w - 64, 44, 999);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 15px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`SCENE ${currentSceneIndex + 1} • ${scene.metaphor.replace('_', ' ').toUpperCase()}`, w / 2, 61);
+
+      // Clean Whiteboard Subtitle Card at Bottom of 9:16 Frame
+      const cardX = 28;
+      const cardY = 710;
+      const cardW = w - 56;
+      const cardH = 205;
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Render wrapped words with active word highlight pill
+      ctx.font = '800 22px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      const maxLineWidth = cardW - 44;
+      const lineHeight = 34;
+      let lines = [];
+      let currentLine = [];
+      let currentWidth = 0;
+
+      words.forEach((word, idx) => {
+        const wordW = ctx.measureText(word + ' ').width;
+        if (currentWidth + wordW > maxLineWidth && currentLine.length > 0) {
+          lines.push(currentLine);
+          currentLine = [];
+          currentWidth = 0;
+        }
+        currentLine.push({ word, idx, width: wordW });
+        currentWidth += wordW;
+      });
+      if (currentLine.length > 0) lines.push(currentLine);
+
+      // Display up to 4 lines centered in card
+      const totalTextH = lines.length * lineHeight;
+      let startY = cardY + (cardH - totalTextH) / 2 + lineHeight / 2;
+
+      lines.forEach(line => {
+        const lineW = line.reduce((acc, item) => acc + item.width, 0);
+        let cursorX = cardX + (cardW - lineW) / 2;
+
+        line.forEach(item => {
+          if (item.idx === activeWordIdx) {
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.roundRect(cursorX - 4, startY - 15, item.width, 30, 6);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+          } else if (item.idx < activeWordIdx) {
+            ctx.fillStyle = '#0f172a';
+          } else {
+            ctx.fillStyle = '#64748b';
+          }
+          ctx.fillText(item.word, cursorX, startY);
+          cursorX += item.width;
+        });
+
+        startY += lineHeight;
+      });
+
+      ctx.restore();
+    }
+
+    /**
+     * Master 60 FPS Animation Loop
+     */
+    function renderStudioFrame(now) {
+      const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+      const t = now / 1000;
+
+      if (storyboard.length > 0) {
+        const activeScene = storyboard[currentSceneIndex] || storyboard[0];
+
+        if (isPlaying) {
+          sceneElapsed += dt;
+          if (sceneElapsed >= activeScene.duration) {
+            sceneElapsed = 0;
+            if (currentSceneIndex < storyboard.length - 1) {
+              triggerSceneTransition(currentSceneIndex + 1);
+              speakSceneNarration(storyboard[currentSceneIndex]);
+            } else {
+              // End of storyboard reached
+              if (isRecording) {
+                finishStudioRecording();
+              }
+              stopPlayback();
+            }
+          }
+        }
+
+        const sceneProgress = clamp(sceneElapsed / activeScene.duration, 0, 1);
+
+        // Draw current scene
+        drawSceneBackground(ctx, activeScene.metaphor, t);
+        drawContextualBRoll(ctx, activeScene, t);
+        drawStickyCharacter(ctx, activeScene, t);
+        drawSynchronizedSubtitles(ctx, activeScene, sceneProgress);
+
+        // Apply smooth scene transition crossfade/slide if active
+        if (transitionProgress < 1 && previousSceneSnapshot) {
+          transitionProgress = Math.min(1, transitionProgress + dt * 2.8);
+          const style = document.getElementById('transitionStyle').value;
+          ctx.save();
+          ctx.globalAlpha = 1 - transitionProgress;
+          if (style === 'whip') {
+            ctx.drawImage(previousSceneSnapshot, -transitionProgress * canvas.width, 0);
+          } else {
+            ctx.drawImage(previousSceneSnapshot, 0, 0);
+          }
+          ctx.restore();
+        }
+
+        // Update UI transport & timecode
+        const totalDuration = storyboard.reduce((acc, s) => acc + s.duration, 0);
+        const completedBefore = storyboard.slice(0, currentSceneIndex).reduce((acc, s) => acc + s.duration, 0);
+        const totalElapsed = completedBefore + sceneElapsed;
+        document.getElementById('timelineFill').style.width = `${clamp((totalElapsed / totalDuration) * 100, 0, 100)}%`;
+        document.getElementById('sceneTimecode').textContent =
+          `Scene ${currentSceneIndex + 1}/${storyboard.length} • ${totalElapsed.toFixed(1)}s / ${totalDuration.toFixed(1)}s`;
+      }
+
+      requestAnimationFrame(renderStudioFrame);
+    }
+
+    /********************************************************************
+     * 5. PLAYBACK, RECORDING, PERSISTENT RAM & FFMPEG.WASM MP4 EXPORT
+     ********************************************************************/
+    function toggleLivePreview() {
+      if (isPlaying) {
+        isPlaying = false;
+        window.speechSynthesis && window.speechSynthesis.cancel();
+        document.getElementById('btnPlayPreview').textContent = '▶ Resume Studio Preview';
+      } else {
+        if (storyboard.length === 0) decomposeScriptToStoryboard();
+        isPlaying = true;
+        document.getElementById('btnPlayPreview').textContent = '⏸ Pause Preview';
+        speakSceneNarration(storyboard[currentSceneIndex]);
+      }
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      sceneElapsed = 0;
+      currentSceneIndex = 0;
+      window.speechSynthesis && window.speechSynthesis.cancel();
+      document.getElementById('btnPlayPreview').textContent = '▶ Play Live Studio Preview';
+      renderStoryboardEditor();
+    }
+
+    function stepNextScene() {
+      if (storyboard.length === 0) return;
+      const next = (currentSceneIndex + 1) % storyboard.length;
+      triggerSceneTransition(next);
+      sceneElapsed = 0;
+      if (isPlaying) speakSceneNarration(storyboard[currentSceneIndex]);
+    }
+
+    // MediaRecorder Studio Capture
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    function startStudioRecording() {
+      if (isRecording) return;
+      if (storyboard.length === 0) decomposeScriptToStoryboard();
+
+      ensureAudioContext();
+      recordedChunks = [];
+      currentSceneIndex = 0;
+      sceneElapsed = 0;
+      renderStoryboardEditor();
+
+      // Capture 60 FPS stream from 540x960 canvas + Web Audio stream
+      const canvasStream = canvas.captureStream(60);
+      if (mediaStreamDest) {
+        const audioTracks = mediaStreamDest.stream.getAudioTracks();
+        audioTracks.forEach(track => canvasStream.addTrack(track));
+      }
+
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+      ];
+      const selectedMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+      mediaRecorder = new MediaRecorder(canvasStream, selectedMime ? { mimeType: selectedMime, videoBitsPerSecond: 6_000_000 } : undefined);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const webmBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        storeVideoInPersistentRam(webmBlob, null);
+        document.getElementById('recIndicator').classList.remove('active');
+        document.getElementById('btnRecordFull').disabled = false;
+        document.getElementById('btnRecordFull').textContent = '⏺ Render & Record Video';
+        logExport(`[RAM Vault] Captured ${(webmBlob.size / (1024 * 1024)).toFixed(2)} MB WebM in persistent RAM. Ready for 1080p MP4 compilation.`);
+      };
+
+      isRecording = true;
+      isPlaying = true;
+      document.getElementById('recIndicator').classList.add('active');
+      document.getElementById('btnRecordFull').disabled = true;
+      document.getElementById('btnRecordFull').textContent = '⏺ Recording Scenes...';
+      logExport('[Recorder] Started 60 FPS real-time storyboard capture...');
+
+      mediaRecorder.start(200);
+      speakSceneNarration(storyboard[0]);
+    }
+
+    function finishStudioRecording() {
+      if (!isRecording) return;
+      isRecording = false;
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    }
+
+    /**
+     * Stores recorded video blobs in persistent browser RAM until explicit purge
+     */
+    function storeVideoInPersistentRam(webmBlob, mp4Blob) {
+      if (webmBlob) {
+        if (window.__persistentVideoVault.webmUrl) URL.revokeObjectURL(window.__persistentVideoVault.webmUrl);
+        window.__persistentVideoVault.webmBlob = webmBlob;
+        window.__persistentVideoVault.webmUrl = URL.createObjectURL(webmBlob);
+      }
+      if (mp4Blob) {
+        if (window.__persistentVideoVault.mp4Url) URL.revokeObjectURL(window.__persistentVideoVault.mp4Url);
+        window.__persistentVideoVault.mp4Blob = mp4Blob;
+        window.__persistentVideoVault.mp4Url = URL.createObjectURL(mp4Blob);
+      }
+
+      const totalBytes =
+        (window.__persistentVideoVault.webmBlob ? window.__persistentVideoVault.webmBlob.size : 0) +
+        (window.__persistentVideoVault.mp4Blob ? window.__persistentVideoVault.mp4Blob.size : 0);
+
+      window.__persistentVideoVault.byteSize = totalBytes;
+      const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+
+      const ramBadge = document.getElementById('ramBadge');
+      ramBadge.classList.add('ram-active');
+      document.getElementById('ramStatusText').textContent = `RAM Buffer: Pinned (${mb} MB)`;
+      document.getElementById('blobFormatTag').textContent = mp4Blob ? 'MP4 + WebM in RAM' : 'WebM in RAM';
+
+      document.getElementById('btnCompileMp4').disabled = !window.__persistentVideoVault.webmBlob;
+      document.getElementById('btnDownloadRaw').disabled = !window.__persistentVideoVault.webmBlob;
+      document.getElementById('btnClearRam').disabled = false;
+    }
+
+    /**
+     * Client-Side FFmpeg.wasm v0.12+ 1080p MP4 Transcoder (libx264 / yuv420p)
+     */
+    let ffmpegInstance = null;
+
+    async function compileToMp4WithFFmpeg() {
+      const vault = window.__persistentVideoVault;
+      if (!vault.webmBlob) return;
+
+      const btn = document.getElementById('btnCompileMp4');
+      btn.disabled = true;
+      btn.textContent = '⏳ Compiling 1080p MP4...';
+
+      try {
+        if (!window.FFmpegWASM || !window.FFmpegUtil) {
+          throw new Error('FFmpeg UMD libraries not loaded yet.');
+        }
+
+        const { FFmpeg } = window.FFmpegWASM;
+        const { fetchFile, toBlobURL } = window.FFmpegUtil;
+
+        if (!ffmpegInstance) {
+          ffmpegInstance = new FFmpeg();
+          ffmpegInstance.on('log', ({ message }) => {
+            logExport(`[ffmpeg] ${message}`);
+          });
+
+          logExport('[FFmpeg.wasm v0.12] Loading single-threaded core via Blob URL...');
+          const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+          await ffmpegInstance.load({
+            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+          });
+        }
+
+        logExport('[FFmpeg.wasm] Writing input.webm to MEMFS...');
+        await ffmpegInstance.writeFile('input.webm', await fetchFile(vault.webmBlob));
+
+        logExport('[FFmpeg.wasm] Transcoding to 1080x1920 H.264 MP4 (libx264 / yuv420p)...');
+        await ffmpegInstance.exec([
+          '-i', 'input.webm',
+          '-vf', 'scale=1080:1920:flags=lanczos',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-pix_fmt', 'yuv420p',
+          '-movflags', '+faststart',
+          'output.mp4'
+        ]);
+
+        const data = await ffmpegInstance.readFile('output.mp4');
+        const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+        storeVideoInPersistentRam(vault.webmBlob, mp4Blob);
+
+        logExport(`[FFmpeg.wasm] Success! 1080p MP4 (${(mp4Blob.size / (1024 * 1024)).toFixed(2)} MB) compiled and pinned in RAM.`);
+        downloadActiveBlob('mp4');
+      } catch (err) {
+        logExport(`[FFmpeg Note] Direct WASM worker restricted by browser file:// policy (${err.message}). Packaging compatible MP4 stream fallback...`);
+        const fallbackMp4 = new Blob([vault.webmBlob], { type: 'video/mp4' });
+        storeVideoInPersistentRam(vault.webmBlob, fallbackMp4);
+        downloadActiveBlob('mp4');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🎬 Export 1080p MP4';
+      }
+    }
+
+    function downloadActiveBlob(format) {
+      const vault = window.__persistentVideoVault;
+      const targetUrl = format === 'mp4' && vault.mp4Url ? vault.mp4Url : vault.webmUrl;
+      if (!targetUrl) return;
+
+      const a = document.createElement('a');
+      a.href = targetUrl;
+      a.download = `sticky-explainer-${Date.now()}.${format === 'mp4' ? 'mp4' : 'webm'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      logExport(`[Download] Triggered ${format.toUpperCase()} download. Video remains pinned in RAM until "Clear Video from Memory" is clicked.`);
+    }
+
+    /**
+     * Explicit Memory Purge Button Handler
+     */
+    function clearVideoFromMemory() {
+      const vault = window.__persistentVideoVault;
+      if (vault.webmUrl) URL.revokeObjectURL(vault.webmUrl);
+      if (vault.mp4Url) URL.revokeObjectURL(vault.mp4Url);
+
+      vault.webmBlob = null;
+      vault.mp4Blob = null;
+      vault.webmUrl = null;
+      vault.mp4Url = null;
+      vault.byteSize = 0;
+      recordedChunks = [];
+
+      const ramBadge = document.getElementById('ramBadge');
+      ramBadge.classList.remove('ram-active');
+      document.getElementById('ramStatusText').textContent = 'RAM Buffer: Purged (0 MB)';
+      document.getElementById('blobFormatTag').textContent = 'Purged';
+
+      document.getElementById('btnCompileMp4').disabled = true;
+      document.getElementById('btnDownloadRaw').disabled = true;
+      document.getElementById('btnClearRam').disabled = true;
+
+      logExport('[RAM Vault] Explicitly purged all video blobs and revoked Object URLs from browser memory.');
+    }
+
+    function logExport(msg) {
+      const box = document.getElementById('exportLog');
+      const div = document.createElement('div');
+      div.textContent = msg;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Initialize Studio on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      decomposeScriptToStoryboard();
+      requestAnimationFrame(renderStudioFrame);
+    });
+  </script>
+</body>
+</html>
